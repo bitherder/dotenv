@@ -5,11 +5,13 @@ require "dotenv/environment"
 module Dotenv
   class << self
     attr_accessor :instrumenter
+    attr_accessor :original_env
   end
 
   module_function
 
   def load(*filenames)
+    ensure_original_env_saved
     with(*filenames) do |f|
       ignoring_nonexistent_files do
         env = Environment.new(f)
@@ -20,6 +22,7 @@ module Dotenv
 
   # same as `load`, but raises Errno::ENOENT if any files don't exist
   def load!(*filenames)
+    ensure_original_env_saved
     with(*filenames) do |f|
       env = Environment.new(f)
       instrument("dotenv.load", :env => env) { env.apply }
@@ -28,11 +31,24 @@ module Dotenv
 
   # same as `load`, but will override existing values in `ENV`
   def overload(*filenames)
+    ensure_original_env_saved
     with(*filenames) do |f|
       ignoring_nonexistent_files do
         env = Environment.new(f)
         instrument("dotenv.overload", :env => env) { env.apply! }
       end
+    end
+  end
+
+  def ensure_original_env_saved
+    @original_env ||= ENV.to_h
+  end
+
+  def restore_original_env
+    if @original_env
+      ENV.replace @original_env
+    else
+      ensure_original_env_saved
     end
   end
 

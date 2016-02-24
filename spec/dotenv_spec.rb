@@ -51,6 +51,11 @@ describe Dotenv do
       it "returns hash of loaded environments" do
         expect(subject).to eq(expected)
       end
+
+      it "calls ensure_original_env_saved" do
+        expect(Dotenv).to receive(:ensure_original_env_saved).and_return(nil)
+        subject
+      end
     end
   end
 
@@ -106,6 +111,69 @@ describe Dotenv do
       it "fails silently" do
         expect { subject }.not_to raise_error
         expect(ENV.keys).to eq(@env_keys)
+      end
+    end
+  end
+
+  context "original environment" do
+    describe "ensure_original_env_saved" do
+      it "saves the current ENV if not already saved" do
+        Dotenv.original_env = nil
+
+        ENV['OPTION_A'] = "1"
+        ENV['OPTION_B'] = "2"
+
+        Dotenv.ensure_original_env_saved
+
+        ENV['OPTION_A'] = "10"
+        ENV['OPTION_C'] = "30"
+
+        saved_env = Dotenv.original_env
+
+        expect(saved_env["OPTION_A"]).to eq("1")
+        expect(saved_env["OPTION_B"]).to eq("2")
+        expect(saved_env.has_key?("OPTION_C")).to eq(false)
+      end
+
+      it "does nothing if ENV is already saved" do
+        Dotenv.original_env = {"OPTION_A" => "1", "OPTION_B" => "2"}
+        ENV['OPTION_A'] = "10"
+        ENV['OPTION_C'] = "30"
+
+        saved_env = Dotenv.original_env
+
+        expect(saved_env["OPTION_A"]).to eq("1")
+        expect(saved_env["OPTION_B"]).to eq("2")
+        expect(saved_env.has_key?("OPTION_C")).to eq(false)
+      end
+    end
+
+    describe "restore_original_env" do
+      it "saves ENV if not saved" do
+        Dotenv.original_env = nil
+
+        ENV['OPTION_A'] = "1"
+        ENV['OPTION_B'] = "2"
+
+        Dotenv.restore_original_env
+
+        saved_env = Dotenv.original_env
+
+        expect(saved_env["OPTION_A"]).to eq("1")
+        expect(saved_env["OPTION_B"]).to eq("2")
+      end
+
+      it "restores saved env" do
+        Dotenv.original_env = {"OPTION_A" => "1", "OPTION_B" => "2"}
+
+        ENV['OPTION_A'] = "10"
+        ENV['OPTION_C'] = "30"
+
+        Dotenv.restore_original_env
+
+        expect(ENV["OPTION_A"]).to eq("1")
+        expect(ENV["OPTION_B"]).to eq("2")
+        expect(ENV.has_key?("OPTION_C")).to eq(false)
       end
     end
   end
