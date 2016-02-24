@@ -7,6 +7,8 @@ module Dotenv
     attr_accessor :instrumenter
   end
 
+  @original_env = ENV.to_h
+
   module_function
 
   def load(*filenames)
@@ -34,6 +36,10 @@ module Dotenv
         instrument("dotenv.overload", :env => env) { env.apply! }
       end
     end
+  end
+
+  def restore_origional_env
+    ENV.replace @original_env
   end
 
   # Internal: Helper to expand list of filenames.
